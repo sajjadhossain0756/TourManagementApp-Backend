@@ -4,11 +4,11 @@ export enum Role {
     SUPER_ADMIN = "SUPER_ADMIN",
     ADMIN = "ADMIN",
     USER = "USER",
-    GUIDES = "GUIDES"
+    GUIDE = "GUIDE"
 }
 
 export interface IAuthProvider {
-    provider: string;
+    provider: "google" | "credentials";
     providerId: string
 }
 
@@ -30,6 +30,6 @@ export interface IUser {
     isVerified?: boolean;
     auths: IAuthProvider[],
     role: Role,
-    bookings: Types.ObjectId[],
-    guides: Types.ObjectId[]
+    // bookings: Types.ObjectId[],
+    // guides: Types.ObjectId[]
 }
