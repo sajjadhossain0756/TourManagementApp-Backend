@@ -5,20 +5,20 @@ import { IsActive, Role } from "./user.interface";
 export const createUserZodSchema = z.object({
     name: z
         .string({
-            message: "Name Must be a String",
+            message: "Name Must be a String and required"
         })
         .min(2, { message: "Name too short. Minimum  character should be 2." })
         .max(50, { message: "Name too long. Maximum character can be 50." }),
     email: z
         .string({
-            message: "Email Must be a String"
+            message: "Email Must be a String and required"
         })
         .email({ message: "Invalid email address format." })
         .min(5, { message: "Email must be at least 5 characters long" })
         .max(100, { message: "Email cannot exceed 100 characters" }),
     password: z
         .string({
-            message: "Password Must be a String"
+            message: "Password Must be a String and required"
         })
         .min(8, { message: "Password must be at least 8 character long" })
         .regex(/^(?=.*[A-Z])/, {
