@@ -1,49 +1,23 @@
 import { NextFunction, Request, Response } from "express";
 import { envVars } from "../config/env";
 import AppError from "../errorHelpers/AppError";
-import mongoose from "mongoose";
+import { handleDuplicateError } from "../helpers/handleDuplicateError";
+import { handleCastError } from "../helpers/handleCastError";
+import { handleValidationError } from "../helpers/handleValidationError";
+import { handleZodError } from "../helpers/handleZodError";
+import { TErrorSources } from "../interfaces/error.types";
 
-const handleDuplicateError = (err: any) => {
-    const matchArray = err.message.match(/"([^"]*)"/);
 
-    return {
-        statusCode: 400,
-        message: `${matchArray[1]} is alredy exist`
-    }
-}
-const handleCastError = (err: mongoose.Error.CastError) => {
-
-    return {
-        statusCode: 400,
-        message: "Invalid mongodb ObjectId.Please provide a valid id"
-    }
-}
-const handleValidationError = (err: mongoose.Error.ValidationError) => {
-
-    const errorSources: any = [];
-    const errors = Object.values(err.errors)
-
-    return {
-        statusCode: 400,
-        message: "Invalid mongodb ObjectId.Please provide a valid id"
-    }
-}
 
 export const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
-
+    if(envVars.NODE_ENV === 'development'){
+        console.log(err);
+    }
     let statusCode = 500;
     let message = "Something went wrong!!";
-    const errorSources: any = [
-        // {
-        //     path:"isDeleted",
-        //     message:"error is occured"
-        // }
-    ];
+    let errorSources: TErrorSources[] = [];
 
     // mongoose error handle manually;
-    // 1.duplicate error
-    // 2.CastError
-    // 3.validation error
 
     // 1.duplicate error
     if (err.code === 11000) {
@@ -56,33 +30,28 @@ export const globalErrorHandler = (err: any, req: Request, res: Response, next: 
         const simplifiedError = handleCastError(err)
         statusCode = simplifiedError.statusCode;
         message = simplifiedError.message
-    } 
+    }
     // 3.validation error
     else if (err.name === "ValidationError") {
-        statusCode = 400;
-        const errors = Object.values(err.errors)
-
-        errors.forEach((errorObject: any) => errorSources.push({
-            path: errorObject.path,
-            message: errorObject.message
-        }));
-        message = "validation Error occured"
-
+        const simplifiedError = handleValidationError(err)
+        statusCode = simplifiedError.statusCode;
+        message = simplifiedError.message;
+        errorSources = simplifiedError.errorSources as TErrorSources[]
     }
+    // Zod error validation
     else if (err.name === "ZodError") {
-        statusCode = 400,
-            message = "Zod error occured"
-        err.issues.forEach((issue: any) => {
-            errorSources.push({
-                path: issue.path[issue.path.length - 1],
-                message: issue.message
-            })
-        })
+        const simplifiedError = handleZodError(err)
+        statusCode = simplifiedError.statusCode;
+        message = simplifiedError.message;
+        errorSources = simplifiedError.errorSources as TErrorSources[]
     }
+    // Manual and default AppError validation
     else if (err instanceof AppError) {
         statusCode = err.statusCode
         message = err.message
-    } else if (err instanceof Error) {
+    }
+    // JavaScript Error validation 
+    else if (err instanceof Error) {
         statusCode = 500;
         message = err.message
     }
@@ -91,7 +60,7 @@ export const globalErrorHandler = (err: any, req: Request, res: Response, next: 
         success: false,
         message,
         errorSources,
-        err,
+        err: envVars.NODE_ENV === 'development' ? err.stack : null,
         stack: envVars.NODE_ENV === 'development' ? err.stack : null
     })
     next();
